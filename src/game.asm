@@ -65,8 +65,10 @@ scroll:                 .res 1    ; Scroll screen
 time:                   .res 1    ; Time (60hz = 60 FPS)
 seconds:                .res 1    ; Seconds
 
-ball_vel_x:             .res 1    ; x velocity of the ball
-ball_vel_y:			        .res 1    ; y velocity of ball
+ball_x:                 .res 1    ; Ball X position
+ball_y:                 .res 1    ; Ball Y position
+ball_dx:                .res 1    ; Ball X velocity
+ball_dy:                .res 1    ; Ball Y velocity
 
 ; Reserve remaining space in this section if needed
                         .res 07   ; Pad to $30 (optional)
@@ -212,11 +214,24 @@ textloop:
   LDA #4
   STA SPRITE_3_ADDR + SPRITE_OFFSET_TILE
 
+  LDA #5
+  STA SPRITE_BALL_ADDR + SPRITE_OFFSET_TILE
+
   LDA #190
   STA player_y
 
   LDA #120
   STA player_x
+
+  LDA #128
+  STA ball_x
+  LDA #100
+  STA ball_y
+
+  LDA #1
+  STA ball_dx
+  LDA #1
+  STA ball_dy
 
   RTS
 .endproc
@@ -249,6 +264,13 @@ textloop:
   ADC #8
   STA SPRITE_2_ADDR + SPRITE_OFFSET_Y
   STA SPRITE_3_ADDR + SPRITE_OFFSET_Y
+
+  ; BALL SPRITE POSITIONING
+  LDA ball_y
+  STA SPRITE_BALL_ADDR + SPRITE_OFFSET_Y
+
+  LDA ball_x
+  STA SPRITE_BALL_ADDR + SPRITE_OFFSET_X
 
   INC scroll
   LDA scroll
@@ -306,6 +328,41 @@ not_left:
     RTS                       ; Return to caller
 .endproc
 
+.proc update_ball
+  ; now move our ball
+ 	lda ball_y ; get the current Y
+	clc
+	adc ball_dy ; add the Y velocity
+ 	sta ball_y ; write the change
+ 	cmp #0 ; have we hit the top border
+ 	bne NOT_HITTOP
+ 		lda #1 ; reverse direction
+ 		sta ball_dy
+ NOT_HITTOP:
+ 	lda ball_y
+ 	cmp #210 ; have we hit the bottom border
+ 	bne NOT_HITBOTTOM
+ 		lda #$FF ; reverse direction (-1)
+ 		sta ball_dy
+ NOT_HITBOTTOM:
+ 	lda ball_x ; get the current x
+ 	clc
+ 	adc ball_dx	; add the X velocity
+ 	sta ball_x
+ 	cmp #0 ; have we hit the left border
+ 	bne NOT_HITLEFT
+ 		lda #1 ; reverse direction
+ 		sta ball_dx
+ NOT_HITLEFT:
+ 	lda ball_x
+ 	cmp #248 ; have we hit the right border
+ 	bne NOT_HITRIGHT
+ 		lda #$FF ; reverse direction (-1)
+ 		sta ball_dx
+ NOT_HITRIGHT:
+  RTS
+.endproc
+
 ;******************************************************************************
 ; Procedure: main
 ;------------------------------------------------------------------------------
@@ -342,6 +399,7 @@ forever:
     ; Read controller
     JSR read_controller
     JSR update_player
+    JSR update_ball
 
     ; Update sprite data (DMA transfer to PPU OAM)
     JSR update_sprites
