@@ -56,6 +56,8 @@ controller_1_released:  .res 1    ; Check if released
 
 ; $20-$2F: Game state variables
 game_state:             .res 1    ; Current game state
+player_moving_x:        .res 1    ; Current player state (0 = standing, 1 = moving)
+player_moving_y:        .res 1    ; Current player state (0 = standing, 1 = moving)
 player_x:               .res 1    ; Player X position
 player_y:               .res 1    ; Player Y position
 player_vel_x:           .res 1    ; Player X velocity
@@ -65,10 +67,12 @@ scroll:                 .res 1    ; Scroll screen
 time:                   .res 1    ; Time (60hz = 60 FPS)
 seconds:                .res 1    ; Seconds
 
-ball_x:                 .res 1    ; Ball X position
-ball_y:                 .res 1    ; Ball Y position
+player_tile_x:          .res 1    ; Player's tile X position
+player_tile_y:          .res 1    ; Player's tile Y position
 ball_dx:                .res 1    ; Ball X velocity
 ball_dy:                .res 1    ; Ball Y velocity
+destination_x:          .res 1    ; The attempted destination X from making a move
+destination_y:          .res 1    ; The attempted destination X from making a move
 
 ; Reserve remaining space in this section if needed
                         .res 07   ; Pad to $30 (optional)
@@ -185,12 +189,12 @@ remaining_loop:
   ; print text
   ; draw some text on the screen
   LDX #0            ; set index X to 0
-textloop:
-  LDA hello_txt, X  ; load character into A from memory (hello_text + X)
-  STA PPU_VRAM_IO   ; set character into PPU
-  INX               ; increment index X
-  CMP #0            ; check A for 0 (null terminator)
-  BNE textloop
+;textloop:
+  ;LDA hello_txt, X  ; load character into A from memory (hello_text + X)
+  ;STA PPU_VRAM_IO   ; set character into PPU
+  ;INX               ; increment index X
+  ;CMP #0            ; check A for 0 (null terminator)
+  ;BNE textloop
 :
 
   ; Reset scroll registers to 0,0 (needed after VRAM access)
@@ -204,33 +208,34 @@ textloop:
 
 .proc init_sprites
   ; set sprite tiles
-  LDA #1
+  LDA #$06
   STA SPRITE_0_ADDR + SPRITE_OFFSET_TILE
-  LDA #2
+  LDA #$07
   STA SPRITE_1_ADDR + SPRITE_OFFSET_TILE
-  LDA #3
+  LDA #$16
   STA SPRITE_2_ADDR + SPRITE_OFFSET_TILE
-  LDA #4
+  LDA #$17
   STA SPRITE_3_ADDR + SPRITE_OFFSET_TILE
 
-  LDA #5
-  STA SPRITE_BALL_ADDR + SPRITE_OFFSET_TILE
+  LDA #2
+  STA SPRITE_0_ADDR + SPRITE_OFFSET_ATTRIB
+  STA SPRITE_1_ADDR + SPRITE_OFFSET_ATTRIB
+  STA SPRITE_2_ADDR + SPRITE_OFFSET_ATTRIB
+  STA SPRITE_3_ADDR + SPRITE_OFFSET_ATTRIB
 
-  LDA #190
+  ;LDA #5
+  ;STA SPRITE_BALL_ADDR + SPRITE_OFFSET_TILE
+
+  LDA #2
+  STA player_tile_x
+  STA player_tile_y
+
+  LDA #32
   STA player_y
-
-  LDA #120
+  STA destination_y
   STA player_x
+  STA destination_x
 
-  LDA #128
-  STA ball_x
-  LDA #100
-  STA ball_y
-
-  LDA #1
-  STA ball_dx
-  LDA #1
-  STA ball_dy
 
   RTS
 .endproc
@@ -265,17 +270,17 @@ textloop:
   STA SPRITE_3_ADDR + SPRITE_OFFSET_Y
 
   ; BALL SPRITE POSITIONING
-  LDA ball_y
-  STA SPRITE_BALL_ADDR + SPRITE_OFFSET_Y
+  ;LDA ball_y
+  ;STA SPRITE_BALL_ADDR + SPRITE_OFFSET_Y
 
-  LDA ball_x
-  STA SPRITE_BALL_ADDR + SPRITE_OFFSET_X
+  ;LDA ball_x
+  ;STA SPRITE_BALL_ADDR + SPRITE_OFFSET_X
 
-  INC scroll
-  LDA scroll
-  STA PPU_SCROLL                         ; Write horizontal scroll
-  LDA #$00
-  STA PPU_SCROLL                         ; Write vertical scroll
+  ;INC scroll
+  ;LDA scroll
+  ;STA PPU_SCROLL                         ; Write horizontal scroll
+  ;LDA #$00
+  ;STA PPU_SCROLL                         ; Write vertical scroll
 
   ; Set OAM address to 0 — required before DMA or manual OAM writes
   LDA #$00
@@ -290,75 +295,154 @@ textloop:
 
 .endproc
 
+.proc move_to_x
+  LDA player_x      ; check x pos
+  CMP destination_x
+  BNE is_x_not_equal
+    LDA #$00 ; if equal to x pos
+    STA player_moving_x
+    RTS
+is_x_not_equal:
+  LDA player_x
+  CMP destination_x
+  BCC is_x_not_less
+    SEC             ; set carry flag for subtraction
+    SBC #$01        ; subtract one from A
+    STA player_x    ; store new value
+    RTS
+is_x_not_less:
+  LDA player_x
+  CMP destination_x
+  CLC             ; clear carry for addition
+  ADC #$01
+  STA player_x
+  RTS
+.endproc
+
+.proc move_to_y
+  LDA player_y      ; check y pos
+  CMP destination_y
+  BNE is_y_not_equal
+    LDA #$00 ; if equal to y pos
+    STA player_moving_y
+    RTS
+is_y_not_equal:
+  LDA player_y
+  CMP destination_y
+  BCC is_y_not_less
+    SEC             ; set carry flag for subtraction
+    SBC #$01        ; subtract one from A
+    STA player_y    ; store new value
+    RTS
+is_y_not_less:
+  LDA player_y
+  CMP destination_y
+    CLC             ; clear carry for addition
+    ADC #$01
+    STA player_y
+    RTS
+.endproc
+
+.proc attempt_right_move
+  LDA #$01
+  STA player_moving_x
+
+  LDA player_tile_x
+  CLC
+  ADC #$01
+  STA player_tile_x
+
+  LDA destination_x
+  CLC
+  ADC #$10
+  STA destination_x
+
+  RTS
+.endproc
+
+.proc attempt_left_move
+  LDA #$01
+  STA player_moving_x
+
+  LDA player_tile_x
+  SEC
+  SBC #$01
+  STA player_tile_x
+
+  LDA destination_x
+  SEC
+  SBC #$10
+  STA destination_x
+
+  RTS
+.endproc
+
+.proc attempt_up_move
+  LDA #$01
+  STA player_moving_y
+
+  LDA player_tile_y
+  SEC
+  SBC #$01
+  STA player_tile_y
+
+  LDA destination_y
+  SEC
+  SBC #$10
+  STA destination_y
+
+  RTS
+.endproc
+
+.proc attempt_down_move
+  LDA #$01
+  STA player_moving_y
+
+  LDA player_tile_y
+  CLC
+  ADC #$01
+  STA player_tile_y
+
+  LDA destination_y
+  CLC
+  ADC #$10
+  STA destination_y
+
+  RTS
+.endproc
+
 .proc update_player
+  ; PLAYER STATE CHECKS
+  LDA player_moving_x
+  ORA player_moving_y
+  CMP #0
+  BEQ continue_input_check
+    JSR move_to_x
+    JSR move_to_y
+    RTS
+
+continue_input_check:
     LDA controller_1
     AND #PAD_L
     BEQ not_left
-      LDA player_x    ; load player_x into A
-      SEC             ; set carry flag for subtraction
-      SBC #$01        ; subtract one from A
-      STA player_x    ; store new value
+      JSR attempt_left_move
 not_left:
     LDA controller_1
     AND #PAD_R
     BEQ not_right
-      LDA player_x
-      CLC             ; clear carry for addition
-      ADC #$01
-      STA player_x
-  not_right:
+      JSR attempt_right_move
+not_right:
     LDA controller_1
     AND #PAD_U
     BEQ not_up
-      LDA player_y
-      SEC
-      SBC #$01
-      STA player_y
-  not_up:
+      JSR attempt_up_move
+not_up:
     LDA controller_1
     AND #PAD_D
     BEQ not_down
-      LDA player_y
-      CLC
-      ADC #$01
-      STA player_y
-  not_down:
+      JSR attempt_down_move
+not_down:
     RTS                       ; Return to caller
-.endproc
-
-.proc update_ball
-  ; now move our ball
- 	lda ball_y ; get the current Y
-	clc
-	adc ball_dy ; add the Y velocity
- 	sta ball_y ; write the change
- 	cmp #0 ; have we hit the top border
- 	bne NOT_HITTOP
- 		lda #1 ; reverse direction
- 		sta ball_dy
- NOT_HITTOP:
- 	lda ball_y
- 	cmp #210 ; have we hit the bottom border
- 	bne NOT_HITBOTTOM
- 		lda #$FF ; reverse direction (-1)
- 		sta ball_dy
- NOT_HITBOTTOM:
- 	lda ball_x ; get the current x
- 	clc
- 	adc ball_dx	; add the X velocity
- 	sta ball_x
- 	cmp #0 ; have we hit the left border
- 	bne NOT_HITLEFT
- 		lda #1 ; reverse direction
- 		sta ball_dx
- NOT_HITLEFT:
- 	lda ball_x
- 	cmp #248 ; have we hit the right border
- 	bne NOT_HITRIGHT
- 		lda #$FF ; reverse direction (-1)
- 		sta ball_dx
- NOT_HITRIGHT:
-  RTS
 .endproc
 
 ;******************************************************************************
@@ -397,7 +481,6 @@ forever:
     ; Read controller
     JSR read_controller
     JSR update_player
-    JSR update_ball
 
     ; Update sprite data (DMA transfer to PPU OAM)
     JSR update_sprites
@@ -488,7 +571,7 @@ no_feedback:
 ;*****************************************************************
 .segment "CHARS"
 ; Load CHR data
-  .incbin "assets/example1/tiles.chr"
+  .incbin "assets/example1/move_tiles.chr"
 
 ;*****************************************************************
 ; Character ROM data (graphics patterns)
@@ -499,10 +582,20 @@ palette_data:
   .incbin "assets/example1/palette.pal"
 ; Load nametable data
 nametable_data:
-  .incbin "assets/example1/screen.nam"
+  .incbin "assets/example1/move_screen.nam"
 
 hello_txt:
 .byte 'H','E','L','L','O',' ','W','O','R','L','D', 0
+
+worldtiles:
+.byte 1,0,0,0,0,0,0,1
+.byte 1,0,0,0,0,0,0,1
+.byte 1,0,0,0,0,0,0,1
+.byte 0,0,0,0,0,0,0,1
+.byte 1,1,0,0,0,0,0,1
+.byte 1,0,0,0,0,0,0,1
+.byte 1,0,0,0,0,0,0,1
+.byte 1,1,1,1,0,1,1,1
 
 ; Startup segment
 .segment "STARTUP"
