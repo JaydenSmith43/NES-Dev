@@ -1,7 +1,7 @@
 Modules list:
 -------------
 r_and_d.o:
-    CODE              Offs=000000  Size=0001D4  Align=00001  Fill=0000
+    CODE              Offs=000000  Size=00022C  Align=00001  Fill=0000
     RODATA            Offs=000000  Size=00046C  Align=00001  Fill=0000
     ZEROPAGE          Offs=000000  Size=000038  Align=00001  Fill=0000
     HEADER            Offs=000000  Size=000008  Align=00001  Fill=0000
@@ -20,8 +20,8 @@ HEADER                000000  000007  000008  00001
 ZEROPAGE              000000  000037  000038  00001
 OAM                   000200  0002FF  000100  00001
 STARTUP               008000  008037  000038  00001
-CODE                  008038  00820B  0001D4  00001
-RODATA                00820C  008677  00046C  00001
+CODE                  008038  008263  00022C  00001
+RODATA                008264  0086CF  00046C  00001
 VECTORS               00FFFA  00FFFF  000006  00001
 
 
@@ -38,5 +38,5 @@ __STACKSIZE__             000300 REA
 Imports list:
 -------------
 __STACKSIZE__ ([linker generated]):
-    [linker generated]        C:\Users\jasmith\Documents\nes-dev\projects\cc65\cfg/nes.cfg:29
+    [linker generated]        C:\Users\jasmith\Documents\GitHub\NES-Dev\cc65\cfg/nes.cfg:29
 

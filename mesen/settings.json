@@ -10042,6 +10042,22 @@
     "Items": [
       {
         "RomFile": {
+          "Path": "C:\\Users\\jasmith\\Documents\\GitHub\\NES-Dev\\src/r_and_d.nes",
+          "InnerFile": "",
+          "InnerFileIndex": 0
+        },
+        "PatchFile": null
+      },
+      {
+        "RomFile": {
+          "Path": "C:\\Users\\jasmith\\Documents\\GitHub\\NES-Dev\\src/game.nes",
+          "InnerFile": "",
+          "InnerFileIndex": 0
+        },
+        "PatchFile": null
+      },
+      {
+        "RomFile": {
           "Path": "C:\\Users\\jasmith\\Documents\\nes-dev\\projects\\src/r_and_d.nes",
           "InnerFile": "",
           "InnerFileIndex": 0
@@ -10160,12 +10176,12 @@
   },
   "MainWindow": {
     "WindowSize": {
-      "Width": 512,
-      "Height": 504
+      "Width": 1536,
+      "Height": 888
     },
     "WindowLocation": {
-      "X": 426,
-      "Y": 96
+      "X": 0,
+      "Y": 0
     },
     "WindowIsMaximized": true
   },

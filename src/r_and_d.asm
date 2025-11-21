@@ -262,6 +262,8 @@ remaining_loop:
   STA SPRITE_3_ADDR + SPRITE_OFFSET_X
 
   LDA player_y
+  SEC           ; accomodate for ppu internal offset of +1 for y pos
+  SBC #1
   STA SPRITE_0_ADDR + SPRITE_OFFSET_Y
   STA SPRITE_1_ADDR + SPRITE_OFFSET_Y
   CLC
@@ -293,6 +295,18 @@ remaining_loop:
 
   RTS
 
+.endproc
+
+.proc check_collision
+    LDA temp_var       ; A = Y
+    ASL A              ; *8 (shift left 3)
+    ASL A
+    ASL A
+    CLC
+    ADC temp_var2      ; +X
+    TAX
+    LDA worldtiles,X   ; load tile collision value
+    RTS
 .endproc
 
 .proc move_to_x
@@ -344,6 +358,19 @@ is_y_not_less:
 .endproc
 
 .proc attempt_right_move
+  ; candidate tile = (tile_x+1, tile_y)
+  LDA player_tile_x
+  CLC
+  ADC #1
+  STA temp_var2        ; candidate X
+  LDA player_tile_y
+  STA temp_var         ; candidate Y
+
+  ; check collision
+  JSR check_collision
+  CMP #1
+  BEQ blocked    ; blocked
+
   LDA #$01
   STA player_moving_x
 
@@ -356,11 +383,24 @@ is_y_not_less:
   CLC
   ADC #$10
   STA destination_x
-
+blocked:
   RTS
 .endproc
 
 .proc attempt_left_move
+  ; candidate tile = (tile_x-1, tile_y)
+  LDA player_tile_x
+  SEC
+  SBC #1
+  STA temp_var2
+  LDA player_tile_y
+  STA temp_var
+
+  ; check collision
+  JSR check_collision
+  CMP #1
+  BEQ blocked
+
   LDA #$01
   STA player_moving_x
 
@@ -373,11 +413,25 @@ is_y_not_less:
   SEC
   SBC #$10
   STA destination_x
-
+blocked:
   RTS
 .endproc
 
 .proc attempt_up_move
+  ; candidate position
+  LDA player_tile_y
+  SEC
+  SBC #1
+  STA temp_var          ; store candidate Y
+  LDA player_tile_x
+  STA temp_var2         ; candidate X
+
+  ; check collision
+  JSR check_collision
+  CMP #1
+  BEQ blocked
+
+  ; move is valid, run -> update pos
   LDA #$01
   STA player_moving_y
 
@@ -390,11 +444,24 @@ is_y_not_less:
   SEC
   SBC #$10
   STA destination_y
-
+blocked:
   RTS
 .endproc
 
 .proc attempt_down_move
+  ; candidate tile = (tile_x, tile_y+1)
+  LDA player_tile_y
+  CLC
+  ADC #1
+  STA temp_var
+  LDA player_tile_x
+  STA temp_var2
+
+  ; check collision
+  JSR check_collision
+  CMP #1
+  BEQ blocked
+
   LDA #$01
   STA player_moving_y
 
@@ -408,6 +475,7 @@ is_y_not_less:
   ADC #$10
   STA destination_y
 
+blocked:
   RTS
 .endproc
 
